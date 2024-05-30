@@ -1,0 +1,6 @@
+VOCdevkit/
+Dataset/
+assets/
+weights/
+CImages/
+*.pyc

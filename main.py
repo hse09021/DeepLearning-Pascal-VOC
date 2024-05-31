@@ -6,6 +6,7 @@ from torchsummary import summary
 import torch
 import torchvision
 from torchvision import transforms
+from PIL import Image
 
 from nets.nn import resnet50, resnet152
 from utils.loss import yoloLoss
@@ -76,15 +77,27 @@ def main(args):
 
     #optimizer = torch.optim.SGD(net.parameters(), lr=learning_rate, momentum=0.9, weight_decay=5e-4)
 
+      tr = [
+        transforms.ToPILImage(),
+        transforms.Resize((448, 448)),
+        transforms.RandomHorizontalFlip(),
+        transforms.ColorJitter(brightness=0.1, contrast=0.1, saturation=0.1, hue=0.1),
+        transforms.ToTensor(),
+        # Cutout(n_holes=1, length=32),
+        # GridMask(),
+        # Mosaic(),
+        # Mixup()         # 이 중에 골라서 사용해봐도 될 듯
+    ]
+
     with open('./Dataset/train.txt') as f:
         train_names = f.readlines()
-    train_dataset = Dataset(root, train_names, train=True, transform=[transforms.ToTensor(), transforms.RandomHorizontalFlip()])
+    train_dataset = Dataset(root, train_names, train=True, transform=[transforms.ToTensor(), transforms=tr)
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True,
                                             num_workers=os.cpu_count())
 
     with open('./Dataset/test.txt') as f:
         test_names = f.readlines()
-    test_dataset = Dataset(root, test_names, train=False, transform=[transforms.ToTensor()])
+    test_dataset = Dataset(root, test_names, train=False, transform=[transforms=tr)
     test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size // 2, shuffle=False,
                                             num_workers=os.cpu_count())
 

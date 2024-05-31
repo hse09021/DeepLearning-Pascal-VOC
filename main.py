@@ -76,8 +76,8 @@ def main(args):
     optimizer = torch.optim.SGD(params, lr=learning_rate, momentum=0.9, weight_decay=5e-4)
 
     #optimizer = torch.optim.SGD(net.parameters(), lr=learning_rate, momentum=0.9, weight_decay=5e-4)
-
-      tr = [
+    
+    tr = [
         transforms.ToPILImage(),
         transforms.Resize((448, 448)),
         transforms.RandomHorizontalFlip(),

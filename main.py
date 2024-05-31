@@ -24,6 +24,22 @@ def ensemble_predict(models, images):
     return avg_predictions
 
 
+def voting_ensemble(models, images):
+    # 각 모델의 예측 결과를 저장
+    predictions = [model(images).max(1)[1]
+                   for model in models]  # 각 모델의 최대 확률 인덱스
+    predictions = torch.stack(predictions)
+
+    # 투표 진행
+    result = []
+    for i in range(predictions.shape[1]):  # 각 샘플에 대해
+        from collections import Counter
+        vote_result = Counter(predictions[:, i].tolist())  # 투표 결과
+        most_common = vote_result.most_common(1)[0][0]  # 가장 많이 나온 예측 선택
+        result.append(most_common)
+    return torch.tensor(result, device=predictions.device)
+
+
 def main(args):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -166,7 +182,8 @@ def main(args):
                 target = target.to(device)
 
                 # prediction = net(images)
-                prediction = ensemble_predict(nets, images)
+                # prediction = ensemble_predict(nets, images)
+                prediction = voting_ensemble(nets, images)
                 loss = criterion(prediction, target)
                 validation_loss += loss.data
 

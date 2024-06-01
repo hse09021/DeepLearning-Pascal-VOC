@@ -190,6 +190,43 @@ class ResNet(nn.Module):
         return x
 
 
+class DenseNet(nn.Module):
+    def __init__(self, block, layers, num_classes=1000):
+        super(DenseNet, self).__init__()
+        self.in_planes = 64
+        self.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3, bias=False)
+        self.bn1 = nn.BatchNorm2d(64)
+        self.relu = nn.ReLU(inplace=True)
+        self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
+        self.layer1 = self._make_dense_layer(block, 64, layers[0])
+        self.layer2 = self._make_dense_layer(block, 128, layers[1], stride=2)
+        self.layer3 = self._make_dense_layer(block, 256, layers[2], stride=2)
+        self.layer4 = self._make_dense_layer(block, 512, layers[3], stride=2)
+        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
+        self.fc = nn.Linear(512 * block.expansion, num_classes)
+
+    def _make_dense_layer(self, block, planes, blocks, stride=1):
+        layers = []
+        layers.append(block(self.in_planes, planes, stride))
+        self.in_planes = planes * block.expansion
+        for _ in range(1, blocks):
+            layers.append(block(self.in_planes, planes))
+        return nn.Sequential(*layers)
+
+    def forward(self, x):
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.relu(x)
+        x = self.maxpool(x)
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.layer3(x)
+        x = self.layer4(x)
+        x = self.avgpool(x)
+        x = torch.flatten(x, 1)
+        x = self.fc(x)
+        return x
+
 # resnet50
 def resnet50(pretrained=False, **kwargs):
     model_ = ResNet(Bottleneck, [3, 4, 6, 3], **kwargs)
@@ -203,6 +240,11 @@ def resnet152(pretrained=False, **kwargs):
         model_.load_state_dict(model_zoo.load_url('https://download.pytorch.org/models/resnet152-394f9c45.pth'))
     return model_
 
+def densenet121(pretrained=False, **kwargs):
+    model_ = DenseNet(Bottleneck, [6, 12, 24, 16], **kwargs)
+    if pretrained:
+        model_.load_state_dict(model_zoo.load_url('https://download.pytorch.org/models/densenet121-a639ec97.pth'))
+    return model_
 
 if __name__ == '__main__':
     a = torch.randn((2, 3, 448, 448))

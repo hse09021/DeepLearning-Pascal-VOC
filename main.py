@@ -179,7 +179,7 @@ def main(args):
     torch.save(save, './weights/yolov1_final.pth')
     
 
-    x = list(range(epoch_start, num_epochs, 1))
+    x = list(range(epoch_start, num_epochs))
 
     """ 시각화 """
     plt.figure()
@@ -196,7 +196,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
     parser.add_argument("--batch_size", type=int, default=32)
-    parser.add_argument("--epoch", type=int, default=50)
+    parser.add_argument("--epoch", type=int, default=30)
     parser.add_argument("--lr", type=float, default=0.001)
     parser.add_argument("--data_dir", type=str, default='./Dataset')
     parser.add_argument("--pre_weights", type=str, help="pretrained weight")

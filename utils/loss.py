@@ -16,25 +16,7 @@ class yoloLoss(Module):
         self.step = 1.0 / 14
 
     def compute_iou(self, box1, box2, index):
-        """
-        box1 = torch.clone(box1)
-        box2 = torch.clone(box2)
-        box1 = self.conver_box(box1, index)
-        box2 = self.conver_box(box2, index)
-        x1, y1, w1, h1 = box1[:, 0], box1[:, 1], box1[:, 2], box1[:, 3]
-        x2, y2, w2, h2 = box2[:, 0], box2[:, 1], box2[:, 2], box2[:, 3]
-        # 
-        inter_w = (w1 + w2) - (torch.max(x1 + w1, x2 + w2) - torch.min(x1, x2))
-        inter_h = (h1 + h2) - (torch.max(y1 + h1, y2 + h2) - torch.min(y1, y2))
-        inter_h = torch.clamp(inter_h, 0)
-        inter_w = torch.clamp(inter_w, 0)
-        # 
-        inter = inter_w * inter_h
-        union = w1 * h1 + w2 * h2 - inter
-        return inter / union
-        """
-        
-        # CIoU
+        """ CIoU로 변경 """
         box1 = torch.clone(box1)
         box2 = torch.clone(box2)
         box1 = self.conver_box(box1, index)

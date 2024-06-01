@@ -179,7 +179,7 @@ def main(args):
     torch.save(save, './weights/yolov1_final.pth')
     
 
-    x = list(range(epoch_start, num_epochs, 1))
+    x = list(range(epoch_start, num_epochs))
 
     """ 시각화 """
     plt.figure()

@@ -11,9 +11,35 @@ from torchvision import transforms
 from nets.nn import resnet50, resnet152, vit
 from utils.loss import yoloLoss
 from utils.dataset import Dataset
-
+from collections import Counter
 import argparse
 import re
+
+
+def ensemble_predict(models, images):
+    # 모든 모델의 예측 결과를 저장할 텐서 초기화
+    predictions = [model(images) for model in models]
+    # 모든 예측 결과의 평균을 계산
+    avg_predictions = torch.mean(torch.stack(predictions), dim=0)
+    return avg_predictions
+
+
+def voting_ensemble(models, images):
+    # 각 모델의 예측 결과를 저장
+    predictions = [model(images).max(1)[1] for model in models]
+    predictions = torch.stack(predictions)
+
+    # 투표 진행
+    result = []
+    for i in range(predictions.shape[1]):  # 각 샘플에 대해
+        # 각 샘플에 대한 예측을 모아 리스트로 만듭니다.
+        sample_predictions = predictions[:, i].tolist()
+        # 각 샘플에 대한 투표 결과를 집계합니다.
+        vote_result = Counter(sample_predictions)
+        # 가장 많이 나온 예측 선택
+        most_common = vote_result.most_common(1)[0][0]
+        result.append(most_common)
+    return torch.tensor(result, device=predictions.device)
 
 
 def main(args):

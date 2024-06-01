@@ -65,7 +65,7 @@ class Dataset(data.Dataset):
             boxes = self.clamp_boxes(boxes, w, h)
 
             """ 모자이크 기법 추가 """
-            img, boxes, labels = mosaic(img, boxes, labels)
+            img, boxes, labels = self.mosaic(img, boxes, labels)
             
         # # debug
         # box_show = boxes.numpy().reshape(-1)

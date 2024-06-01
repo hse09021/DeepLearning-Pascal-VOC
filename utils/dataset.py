@@ -63,6 +63,9 @@ class Dataset(data.Dataset):
             """ 바운딩 박스를 이미지 크기에 맞게 조정 """
             h, w, _ = img.shape
             boxes = self.clamp_boxes(boxes, w, h)
+
+            """ 모자이크 기법 추가 """
+            img, boxes, labels = mosaic(img, boxes, labels)
             
         # # debug
         # box_show = boxes.numpy().reshape(-1)
@@ -171,6 +174,53 @@ class Dataset(data.Dataset):
             noise = np.random.normal(mean, std, bgr.shape).astype(bgr.dtype)
             bgr = cv2.add(bgr, noise)
         return bgr
+    
+    """ 모자이크 기법 """
+    def mosaic(img, boxes, labels, ratio=0.2):
+        """
+        이미지에 모자이크를 적용하여 데이터 증강을 수행하는 함수
+
+        Args:
+            img (numpy.ndarray): 원본 이미지
+            boxes (numpy.ndarray): 바운딩 박스들의 좌표 [x_min, y_min, x_max, y_max]
+            labels (numpy.ndarray): 바운딩 박스들에 대한 라벨
+            ratio (float): 모자이크 비율, 기본값은 0.2
+
+        Returns:
+            numpy.ndarray: 모자이크가 적용된 이미지
+            numpy.ndarray: 모자이크가 적용된 바운딩 박스들의 좌표
+            numpy.ndarray: 모자이크가 적용된 바운딩 박스들의 라벨
+        """
+        h, w, _ = img.shape
+        new_img = img.copy()
+
+        # 모자이크를 적용할 영역의 크기 계산
+        mosaiced_h = int(h * ratio)
+        mosaiced_w = int(w * ratio)
+
+        # 랜덤하게 모자이크 적용할 영역 선택
+        y_offset = np.random.randint(0, h - mosaiced_h + 1)
+        x_offset = np.random.randint(0, w - mosaiced_w + 1)
+
+        # 모자이크 적용
+        mosaic_area = img[y_offset:y_offset + mosaiced_h, x_offset:x_offset + mosaiced_w]
+        mosaic_area = cv2.resize(mosaic_area, (w, h), interpolation=cv2.INTER_NEAREST)
+        new_img[y_offset:y_offset + mosaiced_h, x_offset:x_offset + mosaiced_w] = mosaic_area
+
+        # 모자이크 영역에 속하는 바운딩 박스들의 좌표 및 라벨을 업데이트
+        for i in range(len(boxes)):
+            box = boxes[i]
+            if box[0] >= x_offset and box[2] <= x_offset + mosaiced_w and box[1] >= y_offset and box[3] <= y_offset + mosaiced_h:
+                # 모자이크 영역에 속하는 바운딩 박스의 좌표를 모자이크 영역 내부로 이동
+                box[0] = max(box[0] - x_offset, 0)
+                box[1] = max(box[1] - y_offset, 0)
+                box[2] = min(box[2] - x_offset, mosaiced_w)
+                box[3] = min(box[3] - y_offset, mosaiced_h)
+                # 모자이크 영역에 속하는 바운딩 박스의 라벨을 모자이크된 이미지에 맞게 업데이트
+                boxes[i] = box
+
+        return new_img, boxes, labels
+
 
     def RandomBrightness(self, bgr):
         if random.random() < 0.5:

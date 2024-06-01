@@ -85,11 +85,11 @@ class yoloLoss(Module):
         noobj_mask = ~obj_mask
         
         #물체가 존재하지 않은 bbox의 confidence score 오차의 loss값 계산 
-        noobj_loss = F.mse_loss(pred_boxes[noobj_mask][:, 4],
+        noobj_loss = F.binary_cross_entropy(pred_boxes[noobj_mask][:, 4],
                                 target_boxes[noobj_mask][:, 4],
                                 reduction="sum")
         #물체가 존재하는 bbox의 confidence score 오차의 loss값 계산
-        obj_loss = F.mse_loss(pred_boxes[obj_mask][:, 4],
+        obj_loss = F.binary_cross_entropy(pred_boxes[obj_mask][:, 4],
                               target_boxes[obj_mask][:, 4],
                               reduction="sum")
         #물체가 존재하는 bbox의 중심점의 오차에 loss값 계산
@@ -103,7 +103,7 @@ class yoloLoss(Module):
                              reduction="sum")
         
         #물체가 존재하는 grid cell의 class probability의 오차에 loss값 계산
-        class_loss = F.mse_loss(pred_cls[sig_mask],
+        class_loss = F.cross_entropy(pred_cls[sig_mask],
                                 target_cls[sig_mask],
                                 reduction="sum")
 

@@ -179,13 +179,7 @@ def main(args):
     torch.save(save, './weights/yolov1_final.pth')
     
 
-    x = list(range(epoch_start, num_epochs + 1))
-
-    # 훈련 및 검증 손실 리스트의 길이를 비교하여 더 짧은 리스트의 길이에 맞춤
-    min_length = min(len(x), len(train_losses), len(validation_losses))
-    x = x[:min_length]
-    train_losses = train_losses[:min_length]
-    validation_losses = validation_losses[:min_length]
+    x = list(range(epoch_start, num_epochs, 1))
 
     """ 시각화 """
     plt.figure()

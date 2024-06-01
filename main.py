@@ -2,9 +2,9 @@ import os
 import tqdm
 import numpy as np
 import matplotlib.pyplot as plt
-from torchsummary import summary
 
 import torch
+from torchsummary import summary
 import torchvision
 from torchvision import transforms
 
@@ -96,11 +96,16 @@ def main(args):
     print(f'NUMBER OF DATA SAMPLES: {len(train_dataset)}')
     print(f'BATCH SIZE: {batch_size}')
 
-    """ early stopping 추가 """
-    best_validation_loss = float("inf")
-    patience = 5
-    count = 0
+    # """ early stopping 추가 """
+    # best_validation_loss = float("inf")
+    # patience = 5
+    # count = 0
 
+
+    train_losses = []
+    validation_losses = []
+    train_loader_size = len(train_loader)
+    validation_loader_size = len(test_loader)
 
     for epoch in range(epoch_start,num_epochs):
         net.train()
@@ -132,6 +137,8 @@ def main(args):
             mem = '%.3gG' % (torch.cuda.memory_reserved() / 1E9 if torch.cuda.is_available() else 0)
             s = ('%10s' + '%10.4g' + '%10s') % ('%g/%g' % (epoch, num_epochs), total_loss / (i + 1), mem)
             progress_bar.set_description(s)
+
+        train_losses.append(total_loss / train_loader_size)
         
         
         # validation
@@ -145,20 +152,21 @@ def main(args):
 
                 prediction = net(images)
                 loss = criterion(prediction, target)
-                validation_loss += loss.data
+                validation_loss += loss.item()
             
-        validation_loss /= len(test_loader)
+        validation_losses.append(validation_loss / validation_loader_size)
+
         print(f'Validation_Loss:{validation_loss:07.3}')
 
-        """ early stopping 추가 """
-        if validation_loss < best_validation_loss:
-            best_validation_loss = validation_loss
-            count = 0
-        else:
-            count += 1
-            if count >= patience:
-                print(f"Early stopping at epoch={epoch}")
-                break
+        # """ early stopping 추가 """
+        # if validation_loss < best_validation_loss:
+        #     best_validation_loss = validation_loss
+        #     count = 0
+        # else:
+        #     count += 1
+        #     if count >= patience:
+        #         print(f"Early stopping at epoch={epoch}")
+        #         break
 
         
         #if epoch % 5:
@@ -169,13 +177,32 @@ def main(args):
 
     save = {'state_dict': net.state_dict()}
     torch.save(save, './weights/yolov1_final.pth')
+    
+
+    x = list(range(epoch_start, num_epochs + 1))
+
+    # 훈련 및 검증 손실 리스트의 길이를 비교하여 더 짧은 리스트의 길이에 맞춤
+    min_length = min(len(x), len(train_losses), len(validation_losses))
+    x = x[:min_length]
+    train_losses = train_losses[:min_length]
+    validation_losses = validation_losses[:min_length]
+
+    """ 시각화 """
+    plt.figure()
+    plt.plot(x, train_losses, label='Training Loss')
+    plt.plot(x, validation_losses, label='Validation Loss')
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.legend()
+    plt.show()
+ 
 
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
 
     parser.add_argument("--batch_size", type=int, default=32)
-    parser.add_argument("--epoch", type=int, default=30)
+    parser.add_argument("--epoch", type=int, default=50)
     parser.add_argument("--lr", type=float, default=0.001)
     parser.add_argument("--data_dir", type=str, default='./Dataset')
     parser.add_argument("--pre_weights", type=str, help="pretrained weight")

@@ -51,7 +51,7 @@ class Dataset(data.Dataset):
             img, boxes = self.randomScale(img, boxes)
             img = self.randomBlur(img)
             img = self.RandomBrightness(img)
-            img = self.RandomHue(img)
+            # img = self.RandomHue(img)
             img = self.RandomSaturation(img)
             img, boxes, labels = self.randomShift(img, boxes, labels)
             img, boxes, labels = self.randomCrop(img, boxes, labels)

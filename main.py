@@ -9,7 +9,6 @@ import torchvision
 from torchvision import transforms
 
 from nets.nn import resnet50, resnet152
-import timm
 from utils.loss import yoloLoss
 from utils.dataset import Dataset
 
@@ -29,7 +28,7 @@ def main(args):
     torch.manual_seed(seed)
 
     # net = resnet50()
-    net = resnet152()
+    net = resnet152(pretrained=True)
 
     
     if(args.pre_weights != None):
@@ -43,11 +42,9 @@ def main(args):
     else:
         epoch_start = 1
         # resnet = torchvision.models.resnet50(pretrained=True)
-        # resnet = torchvision.models.resnet152(pretrained=True)
-        efficientnet = timm.create_model('efficientnet_b0', pretrained=True)
+        resnet = torchvision.models.resnet152(pretrained=True)
 
-        # new_state_dict = resnet.state_dict()
-        new_state_dict = efficientnet.state_dict()
+        new_state_dict = resnet.state_dict()
     
         net_dict = net.state_dict()
         for k in new_state_dict.keys():

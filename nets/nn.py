@@ -3,6 +3,7 @@ import torch.nn as nn
 import math
 import torch.utils.model_zoo as model_zoo
 import torch.nn.functional as F
+import torchvision.models as models
 
 resnet50_url = 'https://download.pytorch.org/models/resnet50-19c8e357.pth',
 
@@ -126,6 +127,7 @@ class ResNet(nn.Module):
 
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
 
+        # layers = [3, 4, 6, 2]
         self.layer1 = self._make_layer(block, 64, layers[0])
         self.layer2 = self._make_layer(block, 128, layers[1], stride=2)
         self.layer3 = self._make_layer(block, 256, layers[2], stride=2)
@@ -200,9 +202,8 @@ def resnet50(pretrained=False, **kwargs):
 def resnet152(pretrained=False, **kwargs):
     model_ = ResNet(Bottleneck, [3, 4, 6, 3], **kwargs)
     if pretrained:
-        model_.load_state_dict(model_zoo.load_url('https://download.pytorch.org/models/resnet152-394f9c45.pth'))
+        model_.load_state_dict(model_zoo.load_url('https://download.pytorch.org/models/resnet152-394f9c45.pth'), strict=False)
     return model_
-
 
 if __name__ == '__main__':
     a = torch.randn((2, 3, 448, 448))

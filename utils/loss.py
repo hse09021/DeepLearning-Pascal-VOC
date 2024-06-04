@@ -16,41 +16,21 @@ class yoloLoss(Module):
         self.step = 1.0 / 14
 
     def compute_iou(self, box1, box2, index):
-        """ CIoU로 변경 """
         box1 = torch.clone(box1)
         box2 = torch.clone(box2)
         box1 = self.conver_box(box1, index)
         box2 = self.conver_box(box2, index)
         x1, y1, w1, h1 = box1[:, 0], box1[:, 1], box1[:, 2], box1[:, 3]
         x2, y2, w2, h2 = box2[:, 0], box2[:, 1], box2[:, 2], box2[:, 3]
-        
-        # 좌상단과 우하단 좌표 계산
-        x1_min, y1_min = x1 - w1 / 2, y1 - h1 / 2
-        x1_max, y1_max = x1 + w1 / 2, y1 + h1 / 2
-        x2_min, y2_min = x2 - w2 / 2, y2 - h2 / 2
-        x2_max, y2_max = x2 + w2 / 2, y2 + h2 / 2
-        
-        # 교집합 영역 계산
-        inter_w = torch.max(torch.tensor(0.0), torch.min(x1_max, x2_max) - torch.max(x1_min, x2_min))
-        inter_h = torch.max(torch.tensor(0.0), torch.min(y1_max, y2_max) - torch.max(y1_min, y2_min))
+        # 
+        inter_w = (w1 + w2) - (torch.max(x1 + w1, x2 + w2) - torch.min(x1, x2))
+        inter_h = (h1 + h2) - (torch.max(y1 + h1, y2 + h2) - torch.min(y1, y2))
+        inter_h = torch.clamp(inter_h, 0)
+        inter_w = torch.clamp(inter_w, 0)
+        # 
         inter = inter_w * inter_h
-        
-        # 합집합 영역 계산
         union = w1 * h1 + w2 * h2 - inter
-        
-        # 중심점 간 거리 제곱 계산
-        dist_x = (x2 - x1) ** 2
-        dist_y = (y2 - y1) ** 2
-        dist_center = dist_x + dist_y
-        
-        # 대각선 길이 제곱 계산
-        diag = torch.max(torch.tensor(0.0), (x1_max - x1_min) ** 2 + (y1_max - y1_min) ** 2) + \
-               torch.max(torch.tensor(0.0), (x2_max - x2_min) ** 2 + (y2_max - y2_min) ** 2)
-        
-        # CIoU 계산
-        ciou = inter / union - dist_center / diag
-        
-        return ciou
+        return inter / union
         
 
     def conver_box(self, box, index):

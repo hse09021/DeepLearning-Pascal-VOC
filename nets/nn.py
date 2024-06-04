@@ -206,5 +206,5 @@ def resnet152(pretrained=False, **kwargs):
 
 if __name__ == '__main__':
     a = torch.randn((2, 3, 448, 448))
-    model = resnet50()
+    model = resnet152()
     print(model(a).shape)

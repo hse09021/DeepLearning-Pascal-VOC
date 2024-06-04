@@ -9,6 +9,7 @@ import torchvision
 from torchvision import transforms
 
 from nets.nn import resnet50, resnet152
+import timm
 from utils.loss import yoloLoss
 from utils.dataset import Dataset
 
@@ -42,9 +43,11 @@ def main(args):
     else:
         epoch_start = 1
         # resnet = torchvision.models.resnet50(pretrained=True)
-        resnet = torchvision.models.resnet152(pretrained=True)
+        # resnet = torchvision.models.resnet152(pretrained=True)
+        efficientnet = timm.create_model('efficientnet_b0', pretrained=True)
 
-        new_state_dict = resnet.state_dict()
+        # new_state_dict = resnet.state_dict()
+        new_state_dict = efficientnet.state_dict()
     
         net_dict = net.state_dict()
         for k in new_state_dict.keys():
@@ -196,7 +199,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
     parser.add_argument("--batch_size", type=int, default=32)
-    parser.add_argument("--epoch", type=int, default=30)
+    parser.add_argument("--epoch", type=int, default=50)
     parser.add_argument("--lr", type=float, default=0.001)
     parser.add_argument("--data_dir", type=str, default='./Dataset')
     parser.add_argument("--pre_weights", type=str, help="pretrained weight")

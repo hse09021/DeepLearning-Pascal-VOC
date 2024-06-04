@@ -51,7 +51,7 @@ class Dataset(data.Dataset):
             img, boxes = self.randomScale(img, boxes)
             img = self.randomBlur(img)
             img = self.RandomBrightness(img)
-            # img = self.RandomHue(img)
+            img = self.RandomHue(img)
             img = self.RandomSaturation(img)
             img, boxes, labels = self.randomShift(img, boxes, labels)
             img, boxes, labels = self.randomCrop(img, boxes, labels)
@@ -65,7 +65,7 @@ class Dataset(data.Dataset):
             boxes = self.clamp_boxes(boxes, w, h)
 
             """ 모자이크 기법 추가 """
-            img, boxes, labels = mosaic(img, boxes, labels)
+            # img, boxes, labels = self.mosaic(img, boxes, labels)
             
         # # debug
         # box_show = boxes.numpy().reshape(-1)
@@ -176,7 +176,7 @@ class Dataset(data.Dataset):
         return bgr
     
     """ 모자이크 기법 """
-    def mosaic(img, boxes, labels, ratio=0.2):
+    def mosaic(self, img, boxes, labels, ratio=0.2):
         """
         이미지에 모자이크를 적용하여 데이터 증강을 수행하는 함수
 
@@ -204,7 +204,7 @@ class Dataset(data.Dataset):
 
         # 모자이크 적용
         mosaic_area = img[y_offset:y_offset + mosaiced_h, x_offset:x_offset + mosaiced_w]
-        mosaic_area = cv2.resize(mosaic_area, (w, h), interpolation=cv2.INTER_NEAREST)
+        mosaic_area = cv2.resize(mosaic_area, (mosaiced_w, mosaiced_h), interpolation=cv2.INTER_NEAREST)
         new_img[y_offset:y_offset + mosaiced_h, x_offset:x_offset + mosaiced_w] = mosaic_area
 
         # 모자이크 영역에 속하는 바운딩 박스들의 좌표 및 라벨을 업데이트
@@ -220,6 +220,7 @@ class Dataset(data.Dataset):
                 boxes[i] = box
 
         return new_img, boxes, labels
+
 
 
     def RandomBrightness(self, bgr):

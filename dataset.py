@@ -8,12 +8,12 @@ import torch
 import torch.utils.data as data
 
 import cv2
-
+import torchvision.transforms as transforms
 
 class Dataset(data.Dataset):
     image_size = 448
 
-    def __init__(self, root, file_names, train, transform, cutmix_prob=0.5):
+    def __init__(self, root, file_names, train, transform):
         print('DATA INITIALIZATION')
         self.root_images = os.path.join(root, 'Images')
         self.root_labels = os.path.join(root, 'Labels')
@@ -23,8 +23,6 @@ class Dataset(data.Dataset):
         self.boxes = []
         self.labels = []
         self.mean = (123, 117, 104)  # RGB
-        # self.cutmix_prob = cutmix_prob
-        self.cutout_prob = cutout_prob
 
         for line in file_names:
             line = line.rstrip()
@@ -48,20 +46,22 @@ class Dataset(data.Dataset):
         labels = self.labels[idx].clone()
 
         if self.train:
-            # img = self.random_bright(img)
-            if random.random() < self.cutout_prob:
-            #if random.random() < self.cutmix_prob:
-            #    img, boxes, labels = self.cutmix(img, boxes, labels)
-                img, boxes, labels = self.cutout(img, boxes, labels)
+          
+
+## Augmentation ##
+#           img = self.random_bright(img)
             img, boxes = self.random_flip(img, boxes)
             img, boxes = self.randomScale(img, boxes)
             img = self.randomBlur(img)
             img = self.RandomBrightness(img)
-            img = self.RandomHue(img)
-            img = self.RandomSaturation(img)
-            img, boxes, labels = self.randomShift(img, boxes, labels)
+            #img = self.RandomHue(img)
+            #img = self.RandomSaturation(img)
+            img = self.randomNoise(img)
+            #img, boxes, labels = self.randomShift(img, boxes, labels)
             img, boxes, labels = self.randomCrop(img, boxes, labels)
-
+            img = self.cutout(img)
+            #img, boxes = self.randomRotate(img, boxes)
+## Augmentation ##
         # # debug
         # box_show = boxes.numpy().reshape(-1)
         # print(box_show)
@@ -88,90 +88,6 @@ class Dataset(data.Dataset):
 
     def __len__(self):
         return self.num_samples
-    
-    def cutout(self, image, labels):
-        h, w = image.shape[:2]
-
-        def bbox_ioa(box1, box2):
-            box2 = box2.transpose()
-
-            b1_x1, b1_y1, b1_x2, b1_y2 = box1[0], box1[1], box1[2], box1[3]
-            b2_x1, b2_y1, b2_x2, b2_y2 = box2[0], box2[1], box2[2], box2[3]
-
-            inter_area = (np.minimum(b1_x2, b2_x2) - np.maximum(b1_x1, b2_x1)).clip(0) * \
-                         (np.minimum(b1_y2, b2_y2) - np.maximum(b1_y1, b2_y1)).clip(0)
-
-            box2_area = (b2_x2 - b2_x1) * (b2_y2 - b2_y1) + 1e-16
-
-            return inter_area / box2_area
-
-        scales = [0.5] * 1 + [0.25] * 2 + [0.125] * 4 + [0.0625] * 8 + [0.03125] * 16
-        for s in scales:
-            mask_h = random.randint(1, int(h * s))
-            mask_w = random.randint(1, int(w * s))
-
-            xmin = max(0, random.randint(0, w) - mask_w // 2)
-            ymin = max(0, random.randint(0, h) - mask_h // 2)
-            xmax = min(w, xmin + mask_w)
-            ymax = min(h, ymin + mask_h)
-
-            image[ymin:ymax, xmin:xmax] = [random.randint(64, 191) for _ in range(3)]
-
-            if len(labels) and s > 0.03:
-                box = np.array([xmin, ymin, xmax, ymax], dtype=np.float32)
-                ioa = bbox_ioa(box, labels[:, 1:5])
-                labels = labels[ioa < 0.60]
-
-        return labels
-    def cutmix(self, img, boxes, labels):
-        idx2 = random.choice(range(self.num_samples))
-        while idx2 == idx:
-            idx2 = random.choice(range(self.num_samples))
-
-        img2 = cv2.imread(os.path.join(self.root_images, self.f_names[idx2]))
-        boxes2 = self.boxes[idx2].clone()
-        labels2 = self.labels[idx2].clone()
-
-        h, w, _ = img.shape
-        h2, w2, _ = img2.shape
-
-        lam = np.random.beta(1.0, 1.0)
-        cut_w = int(w * np.sqrt(1 - lam))
-        cut_h = int(h * np.sqrt(1 - lam))
-
-        cx = np.random.randint(w)
-        cy = np.random.randint(h)
-
-        x1 = np.clip(cx - cut_w // 2, 0, w)
-        x2 = np.clip(cx + cut_w // 2, 0, w)
-        y1 = np.clip(cy - cut_h // 2, 0, h)
-        y2 = np.clip(cy + cut_h // 2, 0, h)
-
-        img[y1:y2, x1:x2, :] = cv2.resize(img2, (x2 - x1, y2 - y1))
-
-        new_boxes2 = boxes2.clone()
-        new_boxes2[:, [0, 2]] = new_boxes2[:, [0, 2]] * (x2 - x1) / w2 + x1
-        new_boxes2[:, [1, 3]] = new_boxes2[:, [1, 3]] * (y2 - y1) / h2 + y1
-
-        # Filter out boxes outside the cropped region
-        mask_x = (new_boxes2[:, 0] < x2) & (new_boxes2[:, 2] > x1)
-        mask_y = (new_boxes2[:, 1] < y2) & (new_boxes2[:, 3] > y1)
-        mask = mask_x & mask_y
-
-        new_boxes2 = new_boxes2[mask]
-        new_labels2 = labels2[mask]
-
-        # Clip bounding boxes to the region
-        new_boxes2[:, 0] = new_boxes2[:, 0].clamp(min=x1, max=x2)
-        new_boxes2[:, 1] = new_boxes2[:, 1].clamp(min=y1, max=y2)
-        new_boxes2[:, 2] = new_boxes2[:, 2].clamp(min=x1, max=x2)
-        new_boxes2[:, 3] = new_boxes2[:, 3].clamp(min=y1, max=y2)
-
-        # Combine both sets of boxes and labels
-        new_boxes = torch.cat((boxes, new_boxes2), dim=0)
-        new_labels = torch.cat((labels, new_labels2), dim=0)
-
-        return img, new_boxes, new_labels
 
     def encoder(self, boxes, labels):
         grid_num = 14
@@ -207,6 +123,55 @@ class Dataset(data.Dataset):
 
     def HSV2BGR(self, img):
         return cv2.cvtColor(img, cv2.COLOR_HSV2BGR)
+
+    def randomRotate(self, bgr, boxes, angle_range=(-10, 10)):
+        if random.random() < 0.5:
+            angle = random.uniform(*angle_range)
+            height, width = bgr.shape[:2]
+            center = (width // 2, height // 2)
+            matrix = cv2.getRotationMatrix2D(center, angle, 1.0)
+            cos = np.abs(matrix[0, 0])
+            sin = np.abs(matrix[0, 1])
+            new_width = int((height * sin) + (width * cos))
+            new_height = int((height * cos) + (width * sin))
+            matrix[0, 2] += (new_width / 2) - center[0]
+            matrix[1, 2] += (new_height / 2) - center[1]
+            rotated_img = cv2.warpAffine(bgr, matrix, (new_width, new_height))
+            
+            # 바운딩 박스 좌표 회전
+            boxes_np = boxes.numpy()
+            for i in range(len(boxes_np)):
+                xmin, ymin, xmax, ymax = boxes_np[i]
+                points = np.array([[xmin, ymin], [xmax, ymin], [xmin, ymax], [xmax, ymax]])
+                ones = np.ones(shape=(len(points), 1))
+                points_ones = np.hstack([points, ones])
+                rotated_points = matrix @ points_ones.T
+                xmin, ymin = rotated_points[:2].min(axis=1)
+                xmax, ymax = rotated_points[:2].max(axis=1)
+                boxes_np[i] = [xmin, ymin, xmax, ymax]
+            boxes = torch.Tensor(boxes_np)
+            return rotated_img, boxes
+        return bgr, boxes
+    
+    def randomNoise(self, img):
+        if random.random() < 0.5:
+            mean = 0
+            var = 0.1
+            sigma = var ** 0.5
+            gaussian = np.random.normal(mean, sigma, img.shape)
+            noisy_img = np.clip(img + gaussian, 0, 255).astype(np.uint8)
+            return noisy_img
+        else:
+            return img
+        
+    def cutout(self, img):
+        if random.random() < 0.5:
+            h, w, _ = img.shape
+            length = min(h, w) // 4  # 잘라낼 영역의 크기를 이미지 크기의 1/4로 설정
+            start_h = random.randint(0, h - length)
+            start_w = random.randint(0, w - length)
+            img[start_h:start_h + length, start_w:start_w + length, :] = 0  # 잘라낸 영역을 검은색(0)으로 채움
+        return img
 
     def RandomBrightness(self, bgr):
         if random.random() < 0.5:

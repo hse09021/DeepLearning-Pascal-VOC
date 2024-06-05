@@ -3,6 +3,7 @@ import torch.nn as nn
 import math
 import torch.utils.model_zoo as model_zoo
 import torch.nn.functional as F
+from torchvision.models import vit_b_16
 
 resnet50_url = 'https://download.pytorch.org/models/resnet50-19c8e357.pth',
 
@@ -209,6 +210,11 @@ def resnet152(pretrained=False, **kwargs):
     if pretrained:
         model_.load_state_dict(model_zoo.load_url(
             'https://download.pytorch.org/models/resnet152-394f9c45.pth'))
+    return model_
+
+
+def vit(pretrained=True, **kwargs):
+    model_ = vit_b_16(pretrained=pretrained, **kwargs)
     return model_
 
 

@@ -8,36 +8,12 @@ import torch
 import torchvision
 from torchvision import transforms
 
-from nets.nn import resnet50, resnet152
+from nets.nn import resnet50, resnet152, vit
 from utils.loss import yoloLoss
 from utils.dataset import Dataset
 
 import argparse
 import re
-
-
-def ensemble_predict(models, images):
-    # 모든 모델의 예측 결과를 저장할 텐서 초기화
-    predictions = [model(images) for model in models]
-    # 모든 예측 결과의 평균을 계산
-    avg_predictions = torch.mean(torch.stack(predictions), dim=0)
-    return avg_predictions
-
-
-def voting_ensemble(models, images):
-    # 각 모델의 예측 결과를 저장
-    predictions = [model(images).max(1)[1]
-                   for model in models]  # 각 모델의 최대 확률 인덱스
-    predictions = torch.stack(predictions)
-
-    # 투표 진행
-    result = []
-    for i in range(predictions.shape[1]):  # 각 샘플에 대해
-        from collections import Counter
-        vote_result = Counter(predictions[:, i].tolist())  # 투표 결과
-        most_common = vote_result.most_common(1)[0][0]  # 가장 많이 나온 예측 선택
-        result.append(most_common)
-    return torch.tensor(result, device=predictions.device)
 
 
 def main(args):
@@ -52,9 +28,7 @@ def main(args):
     np.random.seed(seed)
     torch.manual_seed(seed)
 
-    net1 = resnet50()
-    net2 = resnet152()
-    nets = [net1, net2]
+    net = vit(pretrained=True)
 
     if (args.pre_weights != None):
         pattern = 'yolov1_([0-9]+)'
@@ -62,10 +36,8 @@ def main(args):
         f_name = strs.split('/')[-1]
         epoch_str = re.search(pattern, f_name).group(1)
         epoch_start = int(epoch_str) + 1
-        net1.load_state_dict(
-            torch.load(f'./weights/{args.pre_weights}')['state_dict'])
-        net2.load_state_dict(
-            torch.load(f'./weights/{args.pre_weights}')['state_dict'])
+        # net1.load_state_dict(
+        #     torch.load(f'./weights/{args.pre_weights}')['state_dict'])
     else:
         epoch_start = 1
         # resnet = torchvision.models.resnet50(pretrained=True)
@@ -82,21 +54,18 @@ def main(args):
     print('NUMBER OF CUDA DEVICES:', torch.cuda.device_count())
 
     criterion = yoloLoss().to(device)
-    net1 = net1.to(device)
-    net2 = net2.to(device)
+    net = net.to(device)
 
     if torch.cuda.device_count() > 1:
-        net1 = torch.nn.DataParallel(net1)
-        net2 = torch.nn.DataParallel(net2)
+        net = torch.nn.DataParallel(net)
 
     # summary(net,input_size=(3,448,448))
     # different learning rate
 
-    net1.train()
-    net2.train()
+    net.train()
 
     params = []
-    params_dict = dict(net1.named_parameters())
+    params_dict = dict(net.named_parameters())
     for key, value in params_dict.items():
         if key.startswith('features'):
             params += [{'params': [value], 'lr': learning_rate * 10}]
@@ -134,8 +103,7 @@ def main(args):
     count = 0
 
     for epoch in range(epoch_start, num_epochs):
-        net1.train()
-        net2.train()
+        net.train()
 
         if epoch == 30:
             learning_rate = 0.0001
@@ -150,16 +118,14 @@ def main(args):
         progress_bar = tqdm.tqdm(
             enumerate(train_loader), total=len(train_loader))
         for i, (images, target) in progress_bar:
-            images = images.to(device)
+            images = torch.nn.functional.interpolate(
+                images, size=(224, 224)).to(device)
             target = target.to(device)
 
-            pred1 = net1(images)
-            pred2 = net2(images)
+            pred = net(images)
 
             optimizer.zero_grad()
-            loss1 = criterion(pred1, target.float())
-            loss2 = criterion(pred2, target.float())
-            loss = loss1 + loss2
+            loss = criterion(pred, target.float())
             loss.backward()
             optimizer.step()
 
@@ -172,8 +138,7 @@ def main(args):
 
         # validation
         validation_loss = 0.0
-        net1.eval()
-        net2.eval()
+        net.eval()
         with torch.no_grad():
             progress_bar = tqdm.tqdm(
                 enumerate(test_loader), total=len(test_loader))
@@ -181,9 +146,7 @@ def main(args):
                 images = images.to(device)
                 target = target.to(device)
 
-                # prediction = net(images)
-                # prediction = ensemble_predict(nets, images)
-                prediction = voting_ensemble(nets, images)
+                prediction = net(images)
                 loss = criterion(prediction, target)
                 validation_loss += loss.data
 
@@ -203,10 +166,10 @@ def main(args):
         # if epoch % 5:
         #    save = {'state_dict': net.state_dict()}
         #    torch.save(save, f'./weights/yolov1_{epoch+1:04d}.pth')
-        save = {'state_dict': net1.state_dict()}
+        save = {'state_dict': net.state_dict()}
         torch.save(save, f'./weights/yolov1_{epoch:04d}.pth')
 
-    save = {'state_dict': net1.state_dict()}
+    save = {'state_dict': net.state_dict()}
     torch.save(save, './weights/yolov1_final.pth')
 
 

@@ -4,6 +4,8 @@ import math
 import torch.utils.model_zoo as model_zoo
 import torch.nn.functional as F
 from torchvision.models import vit_b_16
+import torchvision.models.detection
+from torchvision.models.detection import FasterRCNN_ResNet50_FPN_Weights
 
 resnet50_url = 'https://download.pytorch.org/models/resnet50-19c8e357.pth',
 
@@ -215,10 +217,18 @@ def resnet152(pretrained=False, **kwargs):
 
 def vit(pretrained=True, **kwargs):
     model_ = vit_b_16(pretrained=pretrained, **kwargs)
+
+    return model_
+
+
+def resnet50FPN(pretrained=True, **kwargs):
+    model_ = torchvision.models.detection.fasterrcnn_resnet50_fpn(
+        weights=FasterRCNN_ResNet50_FPN_Weights.DEFAULT, **kwargs)
     return model_
 
 
 if __name__ == '__main__':
     a = torch.randn((2, 3, 448, 448))
     model = resnet50()
-    print(model(a).shape)
+    # model = resnet50FPN()
+    print(model(a))

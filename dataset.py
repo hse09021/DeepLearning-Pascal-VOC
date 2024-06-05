@@ -48,7 +48,7 @@ class Dataset(data.Dataset):
         if self.train:
           
 
-## Augmentation ##
+        ### Augmentation ###
 #           img = self.random_bright(img)
             img, boxes = self.random_flip(img, boxes)
             img, boxes = self.randomScale(img, boxes)
@@ -60,8 +60,9 @@ class Dataset(data.Dataset):
             #img, boxes, labels = self.randomShift(img, boxes, labels)
             img, boxes, labels = self.randomCrop(img, boxes, labels)
             img = self.cutout(img)
+            #img = self.random_erasing(img)
             #img, boxes = self.randomRotate(img, boxes)
-## Augmentation ##
+         ###  ###
         # # debug
         # box_show = boxes.numpy().reshape(-1)
         # print(box_show)
@@ -123,7 +124,21 @@ class Dataset(data.Dataset):
 
     def HSV2BGR(self, img):
         return cv2.cvtColor(img, cv2.COLOR_HSV2BGR)
+    def random_erasing(self, img, p=0.5, s=(0.02, 0.4), r=(0.3, 3)):
+            if random.random() < p:
+                H, W, _ = img.shape
+                while True:
+                    Se = np.random.uniform(s[0], s[1]) * H * W
+                    re = np.random.uniform(r[0], r[1])
+                    He = int(np.sqrt(Se * re))
+                    We = int(np.sqrt(Se / re))
+                    xe = np.random.randint(0, W)
+                    ye = np.random.randint(0, H)
 
+                    if xe + We <= W and ye + He <= H:
+                        img[ye:ye + He, xe:xe + We, :] = np.random.randint(0, 255, (He, We, 3))
+                        break
+            return img
     def randomRotate(self, bgr, boxes, angle_range=(-10, 10)):
         if random.random() < 0.5:
             angle = random.uniform(*angle_range)

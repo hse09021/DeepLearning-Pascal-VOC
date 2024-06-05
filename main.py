@@ -1,14 +1,13 @@
 import os
 import tqdm
 import numpy as np
-import matplotlib.pyplot as plt
 from torchsummary import summary
 
 import torch
 import torchvision
 from torchvision import transforms
 
-from nets.nn import resnet50, resnet152
+from nets.nn import resnet50
 from utils.loss import yoloLoss
 from utils.dataset import Dataset
 
@@ -27,8 +26,7 @@ def main(args):
     np.random.seed(seed)
     torch.manual_seed(seed)
 
-    # net = resnet50()
-    net = resnet152()
+    net = resnet50()
 
     
     if(args.pre_weights != None):
@@ -41,9 +39,7 @@ def main(args):
             torch.load(f'./weights/{args.pre_weights}')['state_dict'])
     else:
         epoch_start = 1
-        # resnet = torchvision.models.resnet50(pretrained=True)
-        resnet = torchvision.models.resnet152(pretrained=True)
-
+        resnet = torchvision.models.resnet50(pretrained=True)
         new_state_dict = resnet.state_dict()
     
         net_dict = net.state_dict()
@@ -74,33 +70,23 @@ def main(args):
             params += [{'params': [value], 'lr': learning_rate}]
 
     optimizer = torch.optim.SGD(params, lr=learning_rate, momentum=0.9, weight_decay=5e-4)
-    # optimizer = torch.optim.RMSprop(params, lr=learning_rate, alpha=0.99, eps=1e-08, weight_decay=5e-4, momentum=0.9)
 
-    tr = [
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    ]
+    #optimizer = torch.optim.SGD(net.parameters(), lr=learning_rate, momentum=0.9, weight_decay=5e-4)
 
     with open('./Dataset/train.txt') as f:
         train_names = f.readlines()
-    train_dataset = Dataset(root, train_names, train=True, transform=tr)
+    train_dataset = Dataset(root, train_names, train=True, transform=[transforms.ToTensor()])
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True,
                                             num_workers=os.cpu_count())
 
     with open('./Dataset/test.txt') as f:
         test_names = f.readlines()
-    test_dataset = Dataset(root, test_names, train=False, transform=tr)
+    test_dataset = Dataset(root, test_names, train=False, transform=[transforms.ToTensor()])
     test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size // 2, shuffle=False,
                                             num_workers=os.cpu_count())
 
     print(f'NUMBER OF DATA SAMPLES: {len(train_dataset)}')
     print(f'BATCH SIZE: {batch_size}')
-
-    """ early stopping 추가 """
-    best_validation_loss = float("inf")
-    patience = 5
-    count = 0
-
 
     for epoch in range(epoch_start,num_epochs):
         net.train()
@@ -149,17 +135,6 @@ def main(args):
             
         validation_loss /= len(test_loader)
         print(f'Validation_Loss:{validation_loss:07.3}')
-
-        """ early stopping 추가 """
-        if validation_loss < best_validation_loss:
-            best_validation_loss = validation_loss
-            count = 0
-        else:
-            count += 1
-            if count >= patience:
-                print(f"Early stopping at epoch={epoch}")
-                break
-
         
         #if epoch % 5:
         #    save = {'state_dict': net.state_dict()}
@@ -174,7 +149,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--batch_size", type=int, default=32)
+    parser.add_argument("--batch_size", type=int, default=8)
     parser.add_argument("--epoch", type=int, default=30)
     parser.add_argument("--lr", type=float, default=0.001)
     parser.add_argument("--data_dir", type=str, default='./Dataset')
@@ -185,6 +160,3 @@ if __name__ == '__main__':
     
     args.pre_weights = 'yolov1_0010.pth'
     main(args)
-
-
-    # python3 main.py --epoch 100

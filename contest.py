@@ -110,7 +110,7 @@ def contest(args):
 
     if not im_show:
         print('\nSTART FILE WRIGHTING ...')
-        conFile_path = "./assets/CResult.txt"
+        conFile_path = "./assets/CResult_1.txt"
         confile = open(conFile_path,'w')
         
         for (x1, y1), (x2, y2), class_name, image_name, conf in predictions:# 추출한 물체수만큼 루프를 돈다

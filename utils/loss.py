@@ -31,6 +31,7 @@ class yoloLoss(Module):
         inter = inter_w * inter_h
         union = w1 * h1 + w2 * h2 - inter
         return inter / union
+        
 
     def conver_box(self, box, index):
         i, j = index

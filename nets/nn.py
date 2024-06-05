@@ -197,12 +197,6 @@ def resnet50(pretrained=False, **kwargs):
         model_.load_state_dict(model_zoo.load_url('https://download.pytorch.org/models/resnet50-19c8e357.pth'))
     return model_
 
-def resnet152(pretrained=False, **kwargs):
-    model_ = ResNet(Bottleneck, [3, 4, 6, 3], **kwargs)
-    if pretrained:
-        model_.load_state_dict(model_zoo.load_url('https://download.pytorch.org/models/resnet152-394f9c45.pth'))
-    return model_
-
 
 if __name__ == '__main__':
     a = torch.randn((2, 3, 448, 448))

@@ -6,7 +6,7 @@ import torch.nn as nn
 
 import sys
 sys.path.append(r'/home/user/workspace/yolov1')
-from nets.nn import resnet50
+from nets.nn import resnet50, resnet152
 import torchvision.transforms as transforms
 #from torchvision.ops import nms
 
@@ -167,7 +167,7 @@ def predict(model, img_name, root_path=''):
 if __name__ == '__main__':
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model = resnet50().to(device)
+    model = resnet152().to(device)
 
     print('LOADING MODEL...')
     if torch.cuda.device_count() > 1:

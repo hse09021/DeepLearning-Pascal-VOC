@@ -46,13 +46,13 @@ class Dataset(data.Dataset):
         labels = self.labels[idx].clone()
 
         if self.train:
-            img = self.random_bright(img)
+            # img = self.random_bright(img)
             img, boxes = self.random_flip(img, boxes)
             img, boxes = self.randomScale(img, boxes)
-            img = self.randomBlur(img)
-            img = self.RandomBrightness(img)
-            img = self.RandomHue(img)
-            img = self.RandomSaturation(img)
+            # img = self.randomBlur(img)
+            # img = self.RandomBrightness(img)
+            # img = self.RandomHue(img)
+            # img = self.RandomSaturation(img)
             img, boxes, labels = self.randomShift(img, boxes, labels)
             img, boxes, labels = self.randomCrop(img, boxes, labels)
 

@@ -71,7 +71,7 @@ def main(args):
         else:
             params += [{'params': [value], 'lr': learning_rate}]
 
-    optimizer = torch.optim.SGD(params, lr=learning_rate, momentum=0.9, weight_decay=5e-4)
+    optimizer = torch.optim.Adamax(params, lr=learning_rate, weight_decay=5e-4)
 
     with open('./Dataset/train.txt') as f:
         train_names = f.readlines()
@@ -91,12 +91,12 @@ def main(args):
     for epoch in range(epoch_start,num_epochs):
         net.train()
 
-        if epoch == 30:
-            learning_rate = 0.0001
-        if epoch == 40:
-            learning_rate = 0.00001
-        for param_group in optimizer.param_groups:
-            param_group['lr'] = learning_rate
+        # if epoch == 30:
+        #     learning_rate = 0.0001
+        # if epoch == 40:
+        #     learning_rate = 0.00001
+        # for param_group in optimizer.param_groups:
+        #     param_group['lr'] = learning_rate
 
         # training
         total_loss = 0.
@@ -151,7 +151,7 @@ if __name__ == '__main__':
 
     parser.add_argument("--batch_size", type=int, default=8)
     parser.add_argument("--epoch", type=int, default=30)
-    parser.add_argument("--lr", type=float, default=0.001)
+    parser.add_argument("--lr", type=float, default=0.0001)
     parser.add_argument("--data_dir", type=str, default='./Dataset')
     parser.add_argument("--pre_weights", type=str, help="pretrained weight")
     parser.add_argument("--save_dir", type=str, default="./weights")

@@ -152,12 +152,8 @@ def main(args):
                 dd['labels'] = torch.tensor(dd['labels']).to(device)
                 target_dict.append(dd)
 
-            for i in range(0, len(target_dict)):
-                print(target_dict[i]['boxes'])
-                print(target_dict[i]['labels'])
             target_dict = np.array(target_dict)
             pred = net(images, target_dict)
-            print(pred)
             optimizer.zero_grad()
             # loss = criterion(pred, target.float())
 
@@ -224,9 +220,6 @@ def main(args):
                     dd['labels'] = torch.tensor(dd['labels']).to(device)
                     target_dict.append(dd)
 
-                for i in range(0, len(target_dict)):
-                    print(target_dict[i]['boxes'])
-                    print(target_dict[i]['labels'])
                 target_dict = np.array(target_dict)
                 prediction = net(images, target_dict)
                 # loss = criterion(prediction, target)

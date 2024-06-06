@@ -46,7 +46,7 @@ class Dataset(data.Dataset):
         labels = self.labels[idx].clone()
 
         if self.train:
-            # img = self.random_bright(img)
+            img = self.random_bright(img)
             img, boxes = self.random_flip(img, boxes)
             img, boxes = self.randomScale(img, boxes)
             img = self.randomBlur(img)

@@ -7,7 +7,7 @@ import torch
 import torchvision
 from torchvision import transforms
 
-from nets.nn import resnet50
+from nets.nn import resnet50, resnet152
 from utils.loss import yoloLoss
 from utils.dataset import Dataset
 
@@ -26,7 +26,9 @@ def main(args):
     np.random.seed(seed)
     torch.manual_seed(seed)
 
-    net = resnet50()
+    # net = resnet50()
+    net = resnet152()
+
 
     
     if(args.pre_weights != None):
@@ -70,8 +72,6 @@ def main(args):
             params += [{'params': [value], 'lr': learning_rate}]
 
     optimizer = torch.optim.SGD(params, lr=learning_rate, momentum=0.9, weight_decay=5e-4)
-
-    #optimizer = torch.optim.SGD(net.parameters(), lr=learning_rate, momentum=0.9, weight_decay=5e-4)
 
     with open('./Dataset/train.txt') as f:
         train_names = f.readlines()

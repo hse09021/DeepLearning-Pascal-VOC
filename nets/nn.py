@@ -1,3 +1,4 @@
+from torchvision.models.detection.mask_rcnn import MaskRCNNPredictor
 import torch
 import torch.nn as nn
 import math
@@ -221,14 +222,54 @@ def vit(pretrained=True, **kwargs):
     return model_
 
 
+def get_model_instance_segmentation(num_classes):
+    from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
+
+    # COCO 에서 미리 학습된 인스턴스 분할 모델을 읽어옵니다
+    model = torchvision.models.detection.maskrcnn_resnet50_fpn(
+        weights="DEFAULT")
+
+    # 분류를 위한 입력 특징 차원을 얻습니다
+    in_features = model.roi_heads.box_predictor.cls_score.in_features
+    # 미리 학습된 헤더를 새로운 것으로 바꿉니다
+    model.roi_heads.box_predictor = FastRCNNPredictor(in_features, num_classes)
+
+    # 마스크 분류기를 위한 입력 특징들의 차원을 얻습니다
+    in_features_mask = model.roi_heads.mask_predictor.conv5_mask.in_channels
+    hidden_layer = 256
+    # 마스크 예측기를 새로운 것으로 바꿉니다
+    model.roi_heads.mask_predictor = MaskRCNNPredictor(in_features_mask,
+                                                       hidden_layer,
+                                                       num_classes)
+
+    return model
+
+
 def resnet50FPN(pretrained=True, **kwargs):
+    from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
+    from torchvision.models.detection.rpn import AnchorGenerator
+    from torchvision.models.detection import FasterRCNN
+
     model_ = torchvision.models.detection.fasterrcnn_resnet50_fpn(
         weights=FasterRCNN_ResNet50_FPN_Weights.DEFAULT, **kwargs)
+    in_features = model_.roi_heads.box_predictor.cls_score.in_features
+    model_.roi_heads.box_predictor = FastRCNNPredictor(in_features, 30)
+    backbone = torchvision.models.mobilenet_v2(weights="DEFAULT").features
+    backbone.out_channels = 1280
+    anchor_generator = AnchorGenerator(sizes=((32, 64, 128, 256, 512),),
+                                       aspect_ratios=((0.5, 1.0, 2.0),))
+    roi_pooler = torchvision.ops.MultiScaleRoIAlign(featmap_names=['0'],
+                                                    output_size=7,
+                                                    sampling_ratio=2)
+    model_ = FasterRCNN(backbone,
+                        num_classes=30,
+                        rpn_anchor_generator=anchor_generator,
+                        box_roi_pool=roi_pooler)
     return model_
 
 
 if __name__ == '__main__':
     a = torch.randn((2, 3, 448, 448))
-    model = resnet50()
-    # model = resnet50FPN()
+    # model = resnet50()
+    model = resnet50FPN()
     print(model(a))

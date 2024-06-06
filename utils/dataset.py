@@ -54,14 +54,14 @@ class Dataset(data.Dataset):
             img, boxes = self.randomScale(img, boxes)
             img = self.randomBlur(img)
             img = self.RandomBrightness(img)
-            # img = self.RandomHue(img)
-            # img = self.RandomSaturation(img)
+            img = self.RandomHue(img)
+            img = self.RandomSaturation(img)
             img = self.randomNoise(img)
             # img, boxes, labels = self.randomShift(img, boxes, labels)
             img, boxes, labels = self.randomCrop(img, boxes, labels)
             img = self.cutout(img)
             # img = self.random_erasing(img)
-            # img, boxes = self.randomRotate(img, boxes)
+            img, boxes = self.randomRotate(img, boxes)
          ###  ###
         # # debug
         # box_show = boxes.numpy().reshape(-1)

@@ -105,6 +105,18 @@ def main(args):
     for epoch in range(epoch_start, num_epochs):
         net.train()
 
+        if epoch == 30:
+            learning_rate = 0.0001
+        if epoch == 40:
+            learning_rate = 0.00001
+        for param_group in optimizer.param_groups:
+            param_group['lr'] = learning_rate
+
+
+        output_dir = 'zero_target_images'
+        os.makedirs(output_dir, exist_ok=True)
+
+        # training
         total_loss = 0.
         print(('\n' + '%10s' * 3) % ('epoch', 'loss', 'gpu'))
         progress_bar = tqdm.tqdm(
@@ -112,7 +124,6 @@ def main(args):
         for i, (images, target) in progress_bar:
             images = images.to(device)
             target = target.to(device)
-
             pred = net(images)
 
             optimizer.zero_grad()

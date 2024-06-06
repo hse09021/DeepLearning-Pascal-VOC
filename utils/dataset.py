@@ -82,6 +82,8 @@ class Dataset(data.Dataset):
         img = self.subMean(img, self.mean)
         img = cv2.resize(img, (self.image_size, self.image_size))
         target = self.encoder(boxes, labels)  # 14x14x30
+        # print(boxes.shape)
+        # print(labels.shape)
         for t in self.transform:
             img = t(img)
 
@@ -90,12 +92,16 @@ class Dataset(data.Dataset):
     def __len__(self):
         return self.num_samples
 
+    # boxes:{c, x, y, w, h}
+    # labels:{1}
     def encoder(self, boxes, labels):
         grid_num = 14
         target = torch.zeros((grid_num, grid_num, 30))
         cell_size = 1. / grid_num
         wh = boxes[:, 2:] - boxes[:, :2]
         cxcy = (boxes[:, 2:] + boxes[:, :2]) / 2
+        # print(f"boxes 정보 : {boxes}")
+        # print(F"cdcy.size = {cxcy.size()[0]}")
         for i in range(cxcy.size()[0]):
             cxcy_sample = cxcy[i]
             # grid cell의 Y축과 X축의 index 계산
@@ -114,6 +120,7 @@ class Dataset(data.Dataset):
             target[int(ij[1]), int(ij[0]), :2] = delta_xy
             target[int(ij[1]), int(ij[0]), 7:9] = wh[i]
             target[int(ij[1]), int(ij[0]), 5:7] = delta_xy
+        
         return target
 
     def BGR2RGB(self, img):
@@ -343,12 +350,11 @@ def main():
         train_names = f.readlines()
     train_dataset = Dataset(root=file_root, file_names=train_names, train=True,
                             transform=[transforms.ToTensor()])
-    train_loader = DataLoader(
-        train_dataset, batch_size=1, shuffle=False, num_workers=os.cpu_count() - 2)
+    train_loader = DataLoader(train_dataset, batch_size=8, shuffle=False, num_workers=os.cpu_count() - 2)
     train_iter = iter(train_loader)
-    for i in range(10):
-        img, target = next(train_iter)
-        print(img, target)
+    # for i in range(10):
+    #     img, target = next(train_iter)
+    #     print(img, target)
 
 
 if __name__ == '__main__':

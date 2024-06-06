@@ -124,6 +124,7 @@ if __name__ == '__main__':
     from utils.util import *
     from collections import defaultdict
     from tqdm import tqdm
+    from nets.nn import resnet152
 
     targets = defaultdict(list)
     predictions = defaultdict(list)
@@ -151,7 +152,7 @@ if __name__ == '__main__':
     print('DONE.\n')
     print('START TESTING...')
 
-    model = resnet50().to(device)
+    model = resnet152().to(device)
 
     if torch.cuda.device_count() > 1:
         model = nn.DataParallel(model)

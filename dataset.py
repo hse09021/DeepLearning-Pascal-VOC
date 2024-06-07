@@ -49,19 +49,21 @@ class Dataset(data.Dataset):
           
 
         ### Augmentation ###
-#           img = self.random_bright(img)
+            # img = self.random_bright(img)
             img, boxes = self.random_flip(img, boxes)
             img, boxes = self.randomScale(img, boxes)
             img = self.randomBlur(img)
             img = self.RandomBrightness(img)
             #img = self.RandomHue(img)
             #img = self.RandomSaturation(img)
-            img = self.randomNoise(img)
             #img, boxes, labels = self.randomShift(img, boxes, labels)
             img, boxes, labels = self.randomCrop(img, boxes, labels)
+
+        ### 추가한 부분 ###
             img = self.cutout(img)
-            #img = self.random_erasing(img)
-            #img, boxes = self.randomRotate(img, boxes)
+            img = self.randomNoise(img)
+       #################
+        
          ###  ###
         # # debug
         # box_show = boxes.numpy().reshape(-1)
@@ -124,49 +126,6 @@ class Dataset(data.Dataset):
 
     def HSV2BGR(self, img):
         return cv2.cvtColor(img, cv2.COLOR_HSV2BGR)
-    def random_erasing(self, img, p=0.5, s=(0.02, 0.4), r=(0.3, 3)):
-            if random.random() < p:
-                H, W, _ = img.shape
-                while True:
-                    Se = np.random.uniform(s[0], s[1]) * H * W
-                    re = np.random.uniform(r[0], r[1])
-                    He = int(np.sqrt(Se * re))
-                    We = int(np.sqrt(Se / re))
-                    xe = np.random.randint(0, W)
-                    ye = np.random.randint(0, H)
-
-                    if xe + We <= W and ye + He <= H:
-                        img[ye:ye + He, xe:xe + We, :] = np.random.randint(0, 255, (He, We, 3))
-                        break
-            return img
-    def randomRotate(self, bgr, boxes, angle_range=(-10, 10)):
-        if random.random() < 0.5:
-            angle = random.uniform(*angle_range)
-            height, width = bgr.shape[:2]
-            center = (width // 2, height // 2)
-            matrix = cv2.getRotationMatrix2D(center, angle, 1.0)
-            cos = np.abs(matrix[0, 0])
-            sin = np.abs(matrix[0, 1])
-            new_width = int((height * sin) + (width * cos))
-            new_height = int((height * cos) + (width * sin))
-            matrix[0, 2] += (new_width / 2) - center[0]
-            matrix[1, 2] += (new_height / 2) - center[1]
-            rotated_img = cv2.warpAffine(bgr, matrix, (new_width, new_height))
-            
-            # 바운딩 박스 좌표 회전
-            boxes_np = boxes.numpy()
-            for i in range(len(boxes_np)):
-                xmin, ymin, xmax, ymax = boxes_np[i]
-                points = np.array([[xmin, ymin], [xmax, ymin], [xmin, ymax], [xmax, ymax]])
-                ones = np.ones(shape=(len(points), 1))
-                points_ones = np.hstack([points, ones])
-                rotated_points = matrix @ points_ones.T
-                xmin, ymin = rotated_points[:2].min(axis=1)
-                xmax, ymax = rotated_points[:2].max(axis=1)
-                boxes_np[i] = [xmin, ymin, xmax, ymax]
-            boxes = torch.Tensor(boxes_np)
-            return rotated_img, boxes
-        return bgr, boxes
     
     def randomNoise(self, img):
         if random.random() < 0.5:

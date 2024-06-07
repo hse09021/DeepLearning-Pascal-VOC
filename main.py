@@ -75,8 +75,12 @@ def main(args):
         else:
             params += [{'params': [value], 'lr': learning_rate}]
 
-    optimizer = torch.optim.SGD(params, lr=learning_rate, weight_decay=5e-4)
-
+    optimizer = torch.optim.SGD(params, lr=learning_rate, momentum=0.9, weight_decay=5e-4)
+    tr = [
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    ]
+        
     with open('./Dataset/train.txt') as f:
         train_names = f.readlines()
     train_dataset = Dataset(root, train_names, train=True,

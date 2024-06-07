@@ -103,9 +103,13 @@ class yoloLoss(Module):
                              reduction="sum")
 
         # 물체가 존재하는 grid cell의 class probability의 오차에 loss값 계산
-        class_loss = F.mse_loss(pred_cls[sig_mask],
-                                target_cls[sig_mask],
-                                reduction="sum")
+        # class_loss = F.mse_loss(pred_cls[sig_mask],
+        #                         target_cls[sig_mask],
+        #                         reduction="sum")
+
+        class_loss = F.cross_entropy(pred_cls[sig_mask],
+                                     target_cls[sig_mask],
+                                     reduction="sum")
 
         # 각 loss값의 합산
         loss = obj_loss + self.lambda_noobj * noobj_loss \

@@ -16,7 +16,7 @@ import re
 
 
 def main(args):
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    device = torch.device('cuda' if torch.cuda.is_available() else 'mps')
 
     root = args.data_dir
     num_epochs = args.epoch
@@ -36,8 +36,13 @@ def main(args):
         f_name = strs.split('/')[-1]
         epoch_str = re.search(pattern, f_name).group(1)
         epoch_start = int(epoch_str) + 1
-        net.load_state_dict(
-            torch.load(f'./weights/{args.pre_weights}')['state_dict'])
+        state_dict = torch.load(
+            f'./weights/{args.pre_weights}', map_location=device)['state_dict']
+        model_dict = net.state_dict()
+        state_dict = {k: v for k, v in state_dict.items(
+        ) if k in model_dict and v.size() == model_dict[k].size()}
+        model_dict.update(state_dict)
+        net.load_state_dict(model_dict)
     else:
         epoch_start = 1
         resnet = torchvision.models.resnet50(pretrained=True)
@@ -92,18 +97,14 @@ def main(args):
     best_validation_loss = float("inf")
     patience = 5
     count = 0
+    import matplotlib.pyplot as plt
+
+    train_losses = []
+    validation_losses = []
 
     for epoch in range(epoch_start, num_epochs):
         net.train()
 
-        # if epoch == 30:
-        #     learning_rate = 0.0001
-        # if epoch == 40:
-        #     learning_rate = 0.00001
-        # for param_group in optimizer.param_groups:
-        #     param_group['lr'] = learning_rate
-
-        # training
         total_loss = 0.
         print(('\n' + '%10s' * 3) % ('epoch', 'loss', 'gpu'))
         progress_bar = tqdm.tqdm(
@@ -115,7 +116,7 @@ def main(args):
             pred = net(images)
 
             optimizer.zero_grad()
-            loss = criterion(pred, target.float())
+            loss = criterion(pred, target)
 
             loss.backward()
             optimizer.step()
@@ -126,6 +127,8 @@ def main(args):
             s = ('%10s' + '%10.4g' + '%10s') % ('%g/%g' %
                                                 (epoch, num_epochs), total_loss / (i + 1), mem)
             progress_bar.set_description(s)
+
+        train_losses.append(total_loss / len(train_loader))
 
         # validation
         validation_loss = 0.0
@@ -142,6 +145,7 @@ def main(args):
                 validation_loss += loss.data
 
         validation_loss /= len(test_loader)
+        validation_losses.append(validation_loss.item())
         print(f'Validation_Loss:{validation_loss:07.3}')
 
         """ early stopping 추가 """
@@ -154,11 +158,18 @@ def main(args):
                 print(f"Early stopping at epoch={epoch}")
                 break
 
-        # if epoch % 5:
-        #    save = {'state_dict': net.state_dict()}
-        #    torch.save(save, f'./weights/yolov1_{epoch+1:04d}.pth')
         save = {'state_dict': net.state_dict()}
         torch.save(save, f'./weights/yolov1_{epoch:04d}.pth')
+
+    # 그래프 그리기
+    plt.figure(figsize=(10, 5))
+    plt.plot(train_losses, label='Training Loss')
+    plt.plot(validation_losses, label='Validation Loss')
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
+    plt.title('Training and Validation Loss')
+    plt.legend()
+    plt.show()
 
     save = {'state_dict': net.state_dict()}
     torch.save(save, './weights/yolov1_final.pth')

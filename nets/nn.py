@@ -89,6 +89,40 @@ class Bottleneck(nn.Module):
         return out
 
 
+class DetNet(nn.Module):
+    # no expansion
+    # dilation = 2
+    # type B use 1x1 conv
+    expansion = 1
+
+    def __init__(self, in_planes, planes, stride=1, block_type='A'):
+        super(DetNet, self).__init__()
+        self.conv1 = nn.Conv2d(in_planes, planes, kernel_size=1, bias=False)
+        self.bn1 = nn.BatchNorm2d(planes)
+        self.conv2 = nn.Conv2d(planes, planes, kernel_size=3,
+                               stride=stride, padding=2, bias=False, dilation=2)
+        self.bn2 = nn.BatchNorm2d(planes)
+        self.conv3 = nn.Conv2d(planes, self.expansion *
+                               planes, kernel_size=1, bias=False)
+        self.bn3 = nn.BatchNorm2d(self.expansion * planes)
+
+        self.downsample = nn.Sequential()
+        if stride != 1 or in_planes != self.expansion * planes or block_type == 'B':
+            self.downsample = nn.Sequential(
+                nn.Conv2d(in_planes, self.expansion * planes,
+                          kernel_size=1, stride=stride, bias=False),
+                nn.BatchNorm2d(self.expansion * planes)
+            )
+
+    def forward(self, x):
+        out = F.relu(self.bn1(self.conv1(x)))
+        out = F.relu(self.bn2(self.conv2(out)))
+        out = self.bn3(self.conv3(out))
+        out += self.downsample(x)
+        out = F.relu(out)
+        return out
+
+
 class ResNetFPN(nn.Module):
     def __init__(self, num_classes=30):
         super(ResNetFPN, self).__init__()
@@ -117,8 +151,17 @@ class ResNet(nn.Module):
     def __init__(self, block, layers, num_classes=1000):
         self.in_planes = 64
         super(ResNet, self).__init__()
+        self.backbone = resnet_fpn_backbone(
+            'resnet50', weights='IMAGENET1K_V1')
+        self.convGeonsu = nn.Conv2d(
+            256, 3, kernel_size=1, stride=1, bias=False)
+        self.bnGeonsu = nn.BatchNorm2d(3)
         self.conv1 = nn.Conv2d(3, 64, kernel_size=7,
                                stride=2, padding=3, bias=False)
+
+        self.conv_reduce = nn.Conv2d(
+            64, 3, kernel_size=1, stride=1, bias=False)
+        self.bn_reduce = nn.BatchNorm2d(3)
         self.bn1 = nn.BatchNorm2d(64)
         self.relu = nn.ReLU(inplace=True)
 
@@ -168,6 +211,10 @@ class ResNet(nn.Module):
         return nn.Sequential(*layers)
 
     def forward(self, x):
+        x = self.backbone(x)['0']
+        x = self.convGeonsu(x)
+        x = self.bnGeonsu(x)
+
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
@@ -192,7 +239,10 @@ class ResNet(nn.Module):
 
 # resnet50
 def resnet50(pretrained=False, **kwargs):
-    model_ = ResNetFPN(**kwargs)
+    model_ = ResNet(Bottleneck, [3, 4, 6, 3], **kwargs)
+    if pretrained:
+        model_.load_state_dict(model_zoo.load_url(
+            'https://download.pytorch.org/models/resnet50-19c8e357.pth'))
     return model_
 
 
@@ -203,5 +253,5 @@ def resnet152(pretrained=False, **kwargs):
 
 if __name__ == '__main__':
     a = torch.randn((2, 3, 448, 448))
-    model = resnet152()
+    model = resnet50()
     print(model(a))

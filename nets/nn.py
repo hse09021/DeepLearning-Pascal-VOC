@@ -1,15 +1,11 @@
-from torchvision.models.detection.mask_rcnn import MaskRCNNPredictor
 import torch
 import torch.nn as nn
 import math
 import torch.utils.model_zoo as model_zoo
 import torch.nn.functional as F
-from torchvision.models import resnet50, vit_b_16
-import torchvision.models.detection
-from torchvision.models.detection import FasterRCNN_ResNet50_FPN_Weights
-from torchvision.models.detection.backbone_utils import resnet_fpn_backbone
 
-resnet50_url = 'https://download.pytorch.org/models/resnet50-19c8e357.pth',
+resnet50_url = 'https://download.pytorch.org/models/resnet50-19c8e357.pth'
+resnet152_url = 'https://download.pytorch.org/models/resnet152-394f9c45.pth'
 
 
 def conv3x3(in_planes, out_planes, stride=1):
@@ -99,18 +95,15 @@ class DetNet(nn.Module):
         super(DetNet, self).__init__()
         self.conv1 = nn.Conv2d(in_planes, planes, kernel_size=1, bias=False)
         self.bn1 = nn.BatchNorm2d(planes)
-        self.conv2 = nn.Conv2d(planes, planes, kernel_size=3,
-                               stride=stride, padding=2, bias=False, dilation=2)
+        self.conv2 = nn.Conv2d(planes, planes, kernel_size=3, stride=stride, padding=2, bias=False, dilation=2)
         self.bn2 = nn.BatchNorm2d(planes)
-        self.conv3 = nn.Conv2d(planes, self.expansion *
-                               planes, kernel_size=1, bias=False)
+        self.conv3 = nn.Conv2d(planes, self.expansion * planes, kernel_size=1, bias=False)
         self.bn3 = nn.BatchNorm2d(self.expansion * planes)
 
         self.downsample = nn.Sequential()
         if stride != 1 or in_planes != self.expansion * planes or block_type == 'B':
             self.downsample = nn.Sequential(
-                nn.Conv2d(in_planes, self.expansion * planes,
-                          kernel_size=1, stride=stride, bias=False),
+                nn.Conv2d(in_planes, self.expansion * planes, kernel_size=1, stride=stride, bias=False),
                 nn.BatchNorm2d(self.expansion * planes)
             )
 
@@ -123,46 +116,12 @@ class DetNet(nn.Module):
         return out
 
 
-class ResNetFPN(nn.Module):
-    def __init__(self, num_classes=30):
-        super(ResNetFPN, self).__init__()
-        self.backbone = resnet_fpn_backbone(
-            'resnet50', weights='IMAGENET1K_V1')
-        self.fpn = self.backbone.fpn
-        self.relu = nn.ReLU(inplace=True)
-        self.conv_end = nn.Conv2d(
-            # stride를 1로 변경하여 출력 크기 유지
-            256, num_classes, kernel_size=3, stride=1, padding=1, bias=False)
-        self.bn_end = nn.BatchNorm2d(num_classes)
-
-    def forward(self, x):
-        x = self.backbone(x)['0']  # FPN에서 첫 번째 피처 맵 추출
-        x = self.conv_end(x)
-        x = self.bn_end(x)
-        x = torch.sigmoid(x)
-        x = F.interpolate(x, size=(14, 14), mode='bilinear',
-                          align_corners=False)  # 출력 크기를 (14, 14)로 조정
-        x = x.permute(0, 2, 3, 1)  # (-1, 14, 14, 30)
-        return x
-
-
 class ResNet(nn.Module):
 
     def __init__(self, block, layers, num_classes=1000):
         self.in_planes = 64
         super(ResNet, self).__init__()
-        self.backbone = resnet_fpn_backbone(
-            'resnet50', weights='IMAGENET1K_V1')
-        self.convGeonsu = nn.Conv2d(
-            256, 3, kernel_size=1, stride=1, bias=False)
-        self.bnGeonsu = nn.BatchNorm2d(3)
-
-        self.conv1 = nn.Conv2d(3, 64, kernel_size=7,
-                               stride=2, padding=3, bias=False)
-
-        self.conv_reduce = nn.Conv2d(
-            64, 3, kernel_size=1, stride=1, bias=False)
-        self.bn_reduce = nn.BatchNorm2d(3)
+        self.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3, bias=False)
         self.bn1 = nn.BatchNorm2d(64)
         self.relu = nn.ReLU(inplace=True)
 
@@ -176,8 +135,7 @@ class ResNet(nn.Module):
         self.layer5 = self._make_detnet_layer(in_channels=2048)
         # self.avgpool = nn.AvgPool2d(14) #fit 448 input size
         # self.fc = nn.Linear(512 * block.expansion, num_classes)
-        self.conv_end = nn.Conv2d(
-            256, 30, kernel_size=3, stride=1, padding=1, bias=False)
+        self.conv_end = nn.Conv2d(256, 30, kernel_size=3, stride=1, padding=1, bias=False)
         self.bn_end = nn.BatchNorm2d(30)
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -191,11 +149,10 @@ class ResNet(nn.Module):
         downsample = None
         if stride != 1 or self.in_planes != planes * block.expansion:
             downsample = nn.Sequential(
-                nn.Conv2d(self.in_planes, planes * block.expansion,
-                          kernel_size=1, stride=stride, bias=False),
+                nn.Conv2d(self.in_planes, planes * block.expansion, kernel_size=1, stride=stride, bias=False),
                 nn.BatchNorm2d(planes * block.expansion),
             )
-        # [3, 4, 6, 3]
+        #[3, 4, 6, 3]
         layers = [block(self.in_planes, planes, stride, downsample)]
         self.in_planes = planes * block.expansion
         for i in range(1, blocks):
@@ -212,13 +169,6 @@ class ResNet(nn.Module):
         return nn.Sequential(*layers)
 
     def forward(self, x):
-        x = self.backbone(x)['0']
-
-        x = self.convGeonsu(x)
-        x = self.bnGeonsu(x)
-        x = F.interpolate(x, size=(448, 448), mode='bilinear',
-                          align_corners=False)
-
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
@@ -245,20 +195,18 @@ class ResNet(nn.Module):
 def resnet50(pretrained=False, **kwargs):
     model_ = ResNet(Bottleneck, [3, 4, 6, 3], **kwargs)
     if pretrained:
-        model_.load_state_dict(model_zoo.load_url(
-            'https://download.pytorch.org/models/resnet50-19c8e357.pth'))
+        model_.load_state_dict(model_zoo.load_url('https://download.pytorch.org/models/resnet50-19c8e357.pth'))
     return model_
 
-
+# resnet152
 def resnet152(pretrained=False, **kwargs):
-    model_ = ResNet(Bottleneck, [3, 4, 6, 3], **kwargs)
-    if pretrained:
-        model_.load_state_dict(model_zoo.load_url(
-            'https://download.pytorch.org/models/resnet50-19c8e357.pth'))
-    return model_
+    model = ResNet(Bottleneck, [3, 4, 6, 3], **kwargs)
+    model.load_state_dict(model_zoo.load_url(resnet152_url), strict=False)
+
+    return model
 
 
 if __name__ == '__main__':
     a = torch.randn((2, 3, 448, 448))
     model = resnet50()
-    print(model(a))
+    print(model(a).shape)

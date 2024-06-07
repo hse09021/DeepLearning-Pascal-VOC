@@ -8,7 +8,7 @@ import torch
 import torch.utils.data as data
 
 import cv2
-
+import torchvision.transforms as transforms
 
 class Dataset(data.Dataset):
     image_size = 448
@@ -52,12 +52,12 @@ class Dataset(data.Dataset):
             img, boxes, labels = self.randomShift(img, boxes, labels)
             img, boxes, labels = self.randomCrop(img, boxes, labels)
 
-            # kangryong
-            img = self.randomNoise(img)
+            ### 추가한 부분 ###
             img = self.cutout(img)
+            img = self.randomNoise(img)
             img, boxes = self.randomRotate(img, boxes)
             img, boxes, labels = self.dynamic_mosaic(img, boxes, labels)
-
+      
 
         h, w, _ = img.shape
         boxes /= torch.Tensor([w, h, w, h]).expand_as(boxes)
@@ -69,80 +69,6 @@ class Dataset(data.Dataset):
             img = t(img)
 
         return img, target
-    
-    ############################################################################
-
-    def randomRotate(self, bgr, boxes, angle_range=(-10, 10)):
-        if random.random() < 0.5:
-            angle = random.uniform(*angle_range)
-            height, width = bgr.shape[:2]
-            center = (width // 2, height // 2)
-            matrix = cv2.getRotationMatrix2D(center, angle, 1.0)
-            cos = np.abs(matrix[0, 0])
-            sin = np.abs(matrix[0, 1])
-            new_width = int((height * sin) + (width * cos))
-            new_height = int((height * cos) + (width * sin))
-            matrix[0, 2] += (new_width / 2) - center[0]
-            matrix[1, 2] += (new_height / 2) - center[1]
-            rotated_img = cv2.warpAffine(bgr, matrix, (new_width, new_height))
-            
-            # 바운딩 박스 좌표 회전
-            boxes_np = boxes.numpy()
-            for i in range(len(boxes_np)):
-                xmin, ymin, xmax, ymax = boxes_np[i]
-                points = np.array([[xmin, ymin], [xmax, ymin], [xmin, ymax], [xmax, ymax]])
-                ones = np.ones(shape=(len(points), 1))
-                points_ones = np.hstack([points, ones])
-                rotated_points = matrix @ points_ones.T
-                xmin, ymin = rotated_points[:2].min(axis=1)
-                xmax, ymax = rotated_points[:2].max(axis=1)
-                boxes_np[i] = [xmin, ymin, xmax, ymax]
-            boxes = torch.Tensor(boxes_np)
-            return rotated_img, boxes
-        return bgr, boxes
-
-    def dynamic_mosaic(self, img, boxes, labels, ratio_range=(0.1, 0.3)):
-        h, w, _ = img.shape
-        new_img = img.copy()
-        ratio = np.random.uniform(ratio_range[0], ratio_range[1])
-        mosaiced_h = int(h * ratio)
-        mosaiced_w = int(w * ratio)
-        y_offset = np.random.randint(0, h - mosaiced_h + 1)
-        x_offset = np.random.randint(0, w - mosaiced_w + 1)
-        mosaic_area = img[y_offset:y_offset + mosaiced_h, x_offset:x_offset + mosaiced_w]
-        mosaic_area = cv2.resize(mosaic_area, (mosaiced_w, mosaiced_h), interpolation=cv2.INTER_NEAREST)
-        new_img[y_offset:y_offset + mosaiced_h, x_offset:x_offset + mosaiced_w] = mosaic_area
-
-        for i in range(len(boxes)):
-            box = boxes[i]
-            if box[0] >= x_offset and box[2] <= x_offset + mosaiced_w and box[1] >= y_offset and box[3] <= y_offset + mosaiced_h:
-                box[0] = (box[0] - x_offset) / mosaiced_w
-                box[1] = (box[1] - y_offset) / mosaiced_h
-                box[2] = (box[2] - x_offset) / mosaiced_w
-                box[3] = (box[3] - y_offset) / mosaiced_h
-        return new_img, boxes, labels
-
-    def randomNoise(self, img):
-        if random.random() < 0.5:
-            mean = 0
-            var = 0.1
-            sigma = var ** 0.5
-            gaussian = np.random.normal(mean, sigma, img.shape)
-            noisy_img = np.clip(img + gaussian, 0, 255).astype(np.uint8)
-            return noisy_img
-        else:
-            return img
-    
-    def cutout(self, img):
-        if random.random() < 0.5:
-            h, w, _ = img.shape
-            length = min(h, w) // 4  # 잘라낼 영역의 크기를 이미지 크기의 1/4로 설정
-            start_h = random.randint(0, h - length)
-            start_w = random.randint(0, w - length)
-            img[start_h:start_h + length, start_w:start_w + length, :] = 0  # 잘라낸 영역을 검은색(0)으로 채움
-        return img
-    
-    ############################################################################
 
     def __len__(self):
         return self.num_samples
@@ -181,7 +107,78 @@ class Dataset(data.Dataset):
 
     def HSV2BGR(self, img):
         return cv2.cvtColor(img, cv2.COLOR_HSV2BGR)
+    """ noise 추가 """
+    def randomNoise(self, img):
+        if random.random() < 0.5:
+            mean = 0
+            var = 0.1
+            sigma = var ** 0.5
+            gaussian = np.random.normal(mean, sigma, img.shape)
+            noisy_img = np.clip(img + gaussian, 0, 255).astype(np.uint8)
+            return noisy_img
+        else:
+            return img
 
+    """ cutout 추가 """
+    def cutout(self, img):
+        if random.random() < 0.5:
+            h, w, _ = img.shape
+            length = min(h, w) // 4  # 잘라낼 영역의 크기를 이미지 크기의 1/4로 설정
+            start_h = random.randint(0, h - length)
+            start_w = random.randint(0, w - length)
+            img[start_h:start_h + length, start_w:start_w + length, :] = 0  # 잘라낸 영역을 검은색(0)으로 채움
+        return img
+
+    def randomRotate(self, bgr, boxes, angle_range=(-10, 10)):
+        if random.random() < 0.5:
+            angle = random.uniform(*angle_range)
+            height, width = bgr.shape[:2]
+            center = (width // 2, height // 2)
+            matrix = cv2.getRotationMatrix2D(center, angle, 1.0)
+            cos = np.abs(matrix[0, 0])
+            sin = np.abs(matrix[0, 1])
+            new_width = int((height * sin) + (width * cos))
+            new_height = int((height * cos) + (width * sin))
+            matrix[0, 2] += (new_width / 2) - center[0]
+            matrix[1, 2] += (new_height / 2) - center[1]
+            rotated_img = cv2.warpAffine(bgr, matrix, (new_width, new_height))
+            
+            # 바운딩 박스 좌표 회전
+            boxes_np = boxes.numpy()
+            for i in range(len(boxes_np)):
+                xmin, ymin, xmax, ymax = boxes_np[i]
+                points = np.array([[xmin, ymin], [xmax, ymin], [xmin, ymax], [xmax, ymax]])
+                ones = np.ones(shape=(len(points), 1))
+                points_ones = np.hstack([points, ones])
+                rotated_points = matrix @ points_ones.T
+                xmin, ymin = rotated_points[:2].min(axis=1)
+                xmax, ymax = rotated_points[:2].max(axis=1)
+                boxes_np[i] = [xmin, ymin, xmax, ymax]
+            boxes = torch.Tensor(boxes_np)
+            return rotated_img, boxes
+        return bgr, boxes
+    
+    def dynamic_mosaic(self, img, boxes, labels, ratio_range=(0.1, 0.3)):
+        h, w, _ = img.shape
+        new_img = img.copy()
+        ratio = np.random.uniform(ratio_range[0], ratio_range[1])
+        mosaiced_h = int(h * ratio)
+        mosaiced_w = int(w * ratio)
+        y_offset = np.random.randint(0, h - mosaiced_h + 1)
+        x_offset = np.random.randint(0, w - mosaiced_w + 1)
+        mosaic_area = img[y_offset:y_offset + mosaiced_h, x_offset:x_offset + mosaiced_w]
+        mosaic_area = cv2.resize(mosaic_area, (mosaiced_w, mosaiced_h), interpolation=cv2.INTER_NEAREST)
+        new_img[y_offset:y_offset + mosaiced_h, x_offset:x_offset + mosaiced_w] = mosaic_area
+
+        for i in range(len(boxes)):
+            box = boxes[i]
+            if box[0] >= x_offset and box[2] <= x_offset + mosaiced_w and box[1] >= y_offset and box[3] <= y_offset + mosaiced_h:
+                box[0] = (box[0] - x_offset) / mosaiced_w
+                box[1] = (box[1] - y_offset) / mosaiced_h
+                box[2] = (box[2] - x_offset) / mosaiced_w
+                box[3] = (box[3] - y_offset) / mosaiced_h
+        return new_img, boxes, labels
+    
     def RandomBrightness(self, bgr):
         if random.random() < 0.5:
             hsv = self.BGR2HSV(bgr)

@@ -156,6 +156,7 @@ class ResNet(nn.Module):
         self.convGeonsu = nn.Conv2d(
             256, 3, kernel_size=1, stride=1, bias=False)
         self.bnGeonsu = nn.BatchNorm2d(3)
+
         self.conv1 = nn.Conv2d(3, 64, kernel_size=7,
                                stride=2, padding=3, bias=False)
 
@@ -212,8 +213,11 @@ class ResNet(nn.Module):
 
     def forward(self, x):
         x = self.backbone(x)['0']
+
         x = self.convGeonsu(x)
         x = self.bnGeonsu(x)
+        x = F.interpolate(x, size=(448, 448), mode='bilinear',
+                          align_corners=False)
 
         x = self.conv1(x)
         x = self.bn1(x)
@@ -247,7 +251,10 @@ def resnet50(pretrained=False, **kwargs):
 
 
 def resnet152(pretrained=False, **kwargs):
-    model_ = ResNetFPN(**kwargs)
+    model_ = ResNet(Bottleneck, [3, 4, 6, 3], **kwargs)
+    if pretrained:
+        model_.load_state_dict(model_zoo.load_url(
+            'https://download.pytorch.org/models/resnet50-19c8e357.pth'))
     return model_
 
 

@@ -54,8 +54,8 @@ class Dataset(data.Dataset):
             img, boxes = self.randomScale(img, boxes)
             img = self.randomBlur(img)
             img = self.RandomBrightness(img)
-            #img = self.RandomHue(img)
-            #img = self.RandomSaturation(img)
+            img = self.RandomHue(img)
+            img = self.RandomSaturation(img)
             #img, boxes, labels = self.randomShift(img, boxes, labels)
             img, boxes, labels = self.randomCrop(img, boxes, labels)
 
@@ -126,7 +126,7 @@ class Dataset(data.Dataset):
 
     def HSV2BGR(self, img):
         return cv2.cvtColor(img, cv2.COLOR_HSV2BGR)
-    
+    """ noise 추가 """
     def randomNoise(self, img):
         if random.random() < 0.5:
             mean = 0
@@ -137,7 +137,8 @@ class Dataset(data.Dataset):
             return noisy_img
         else:
             return img
-        
+
+    """ cutout 추가 """
     def cutout(self, img):
         if random.random() < 0.5:
             h, w, _ = img.shape

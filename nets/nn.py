@@ -92,7 +92,8 @@ class Bottleneck(nn.Module):
 class ResNetFPN(nn.Module):
     def __init__(self, num_classes=30):
         super(ResNetFPN, self).__init__()
-        self.backbone = resnet_fpn_backbone('resnet50', pretrained=True)
+        self.backbone = resnet_fpn_backbone(
+            'resnet50', weights='IMAGENET1K_V1')
         self.fpn = self.backbone.fpn
         self.relu = nn.ReLU(inplace=True)
         self.conv_end = nn.Conv2d(
@@ -102,7 +103,6 @@ class ResNetFPN(nn.Module):
 
     def forward(self, x):
         x = self.backbone(x)['0']  # FPN에서 첫 번째 피처 맵 추출
-        x = self.relu(x)
         x = self.conv_end(x)
         x = self.bn_end(x)
         x = torch.sigmoid(x)
@@ -203,5 +203,5 @@ def resnet152(pretrained=False, **kwargs):
 
 if __name__ == '__main__':
     a = torch.randn((2, 3, 448, 448))
-    model = resnet50()
+    model = resnet152()
     print(model(a))

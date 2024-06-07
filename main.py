@@ -75,7 +75,7 @@ def main(args):
         else:
             params += [{'params': [value], 'lr': learning_rate}]
 
-    optimizer = torch.optim.Adamax(params, lr=learning_rate, weight_decay=5e-4)
+    optimizer = torch.optim.SGD(params, lr=learning_rate, weight_decay=5e-4)
 
     with open('./Dataset/train.txt') as f:
         train_names = f.readlines()

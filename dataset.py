@@ -46,9 +46,6 @@ class Dataset(data.Dataset):
         labels = self.labels[idx].clone()
 
         if self.train:
-          
-
-        ### Augmentation ###
             # img = self.random_bright(img)
             img, boxes = self.random_flip(img, boxes)
             img, boxes = self.randomScale(img, boxes)
@@ -62,22 +59,7 @@ class Dataset(data.Dataset):
         ### 추가한 부분 ###
             img = self.cutout(img)
             img = self.randomNoise(img)
-       #################
         
-         ###  ###
-        # # debug
-        # box_show = boxes.numpy().reshape(-1)
-        # print(box_show)
-        # img_show = self.BGR2RGB(img)
-        # pt1=(int(box_show[0]),int(box_show[1])); pt2=(int(box_show[2]),int(box_show[3]))
-        # cv2.rectangle(img_show,pt1=pt1,pt2=pt2,color=(0,255,0),thickness=1)
-        # plt.figure()
-        #
-        # # cv2.rectangle(img,pt1=(10,10),pt2=(100,100),color=(0,255,0),thickness=1)
-        # plt.imshow(img_show)
-        # plt.show()
-        # # debug
-
         h, w, _ = img.shape
         boxes /= torch.Tensor([w, h, w, h]).expand_as(boxes)
         img = self.BGR2RGB(img)
